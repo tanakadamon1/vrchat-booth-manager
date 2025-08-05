@@ -1,0 +1,123 @@
+/* アイコンサイズ調整 */
+.action-icon {
+  font-size: 12px !important;
+  padding: 4px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  width: 24px !important;
+  height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* ボタンアイコンのサイズ調整 */
+button[title="Unity で開く"],
+button[title="編集"],
+button[title="削除"],
+button[title="Unityで開く"] {
+  font-size: 12px !important;
+  padding: 4px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  width: 24px !important;
+  height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+}
+
+/* 設定ボタンのアイコンサイズ */
+button[title="設定"] {
+  font-size: 14px !important;
+}
+
+/* ヘッダーの設定ボタン全体のサイズ調整 */
+.header-settings-btn {
+  font-size: 14px !important;
+  padding: 8px 12px !important;
+}
+
+/* 商品カード上のアクションボタンコンテナ */
+.action-buttons-container {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+}
+
+/* サムネイル画像のサイズ調整 */
+.thumbnail-preview {
+  width: 60px !important;
+  height: 60px !important;
+  object-fit: cover !important;
+}
+
+/* 商品一覧の画像コンテナサイズ調整 */
+.aspect-square {
+  width: 120px !important;
+  height: 120px !important;
+  aspect-ratio: 1 / 1 !important;
+  max-width: 120px !important;
+  max-height: 120px !important;
+}
+
+/* 商品カード全体のサイズ調整 */
+.bg-gray-800.rounded-lg.overflow-hidden {
+  max-width: 140px !important;
+}
+
+/* 商品画像の直接的なサイズ制限 */
+.aspect-square img,
+.aspect-square .w-full {
+  width: 120px !important;
+  height: 120px !important;
+  max-width: 120px !important;
+  max-height: 120px !important;
+  object-fit: cover !important;
+}
+
+/* チェックボックスのサイズ調整 */
+input[type="checkbox"] {
+  width: 16px !important;
+  height: 16px !important;
+  margin-right: 8px !important;
+}
+
+/* 商品詳細画面の画像サイズ制限 */
+.product-detail-image {
+  max-width: 192px !important;
+  max-height: 192px !important;
+  width: 192px !important;
+  height: auto !important;
+  object-fit: contain !important;
+}
+
+/* より具体的なセレクタで商品詳細モーダルの画像を制限 */
+.bg-gray-800.rounded-lg img {
+  max-width: 192px !important;
+  max-height: 192px !important;
+  width: 192px !important;
+  height: auto !important;
+  object-fit: contain !important;
+}
+
+/* 商品カードのレイアウト改善 */
+.line-clamp-1 {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* 価格や0の表示を確実に非表示 */
+[class*="price"], 
+.text-green-400:contains("0"),
+.text-green-400:contains("¥0") {
+  display: none !important;
+}
+
+/* 設定画面の見出しアイコンサイズ */
+.settings-icon {
+  font-size: 16px !important;
+  margin-right: 8px !important;
+}
