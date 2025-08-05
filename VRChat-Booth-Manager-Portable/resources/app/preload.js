@@ -22,6 +22,8 @@ const api = {
   },
   fs: {
     exists: (filePath) => ipcRenderer.invoke('fs:exists', filePath),
+    moveToArchive: (filePath) => ipcRenderer.invoke('fs:moveToArchive', filePath),
+    getArchiveDir: () => ipcRenderer.invoke('fs:getArchiveDir'),
   },
   fetch: {
     thumbnail: (boothUrl) => ipcRenderer.invoke('fetch:thumbnail', boothUrl),
@@ -29,6 +31,10 @@ const api = {
   data: {
     export: () => ipcRenderer.invoke('data:export'),
     import: () => ipcRenderer.invoke('data:import'),
+  },
+  settings: {
+    get: () => ipcRenderer.invoke('settings:get'),
+    update: (settings) => ipcRenderer.invoke('settings:update', settings),
   }
 };
 

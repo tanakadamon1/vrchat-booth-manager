@@ -267,6 +267,7 @@
             <div style="display: flex; align-items: center; gap: 10px;">
                 <h1>VRChat Booth商品管理</h1>
                 <button onclick="showHelpModal()" style="width: 24px; height: 24px; border-radius: 50%; background-color: #6b7280; color: white; border: none; cursor: pointer; font-size: 14px; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s;" title="使い方を表示" onmouseover="this.style.backgroundColor='#4b5563'" onmouseout="this.style.backgroundColor='#6b7280'">?</button>
+                <button onclick="showSettingsModal()" style="width: 24px; height: 24px; border-radius: 50%; background-color: #6b7280; color: white; border: none; cursor: pointer; font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s;" title="設定" onmouseover="this.style.backgroundColor='#4b5563'" onmouseout="this.style.backgroundColor='#6b7280'">⚙</button>
             </div>
             <div style="display: flex; align-items: center; gap: 15px;">
                 <div style="position: relative;">
@@ -1709,6 +1710,46 @@
                         // 新規追加
                         await window.electronAPI.database.addProduct(productData);
                         console.log('Product added:', productData);
+                        
+                        // 設定確認後、メインファイルをアーカイブに移動
+                        const settings = await window.electronAPI.settings.get();
+                        if (settings.autoArchive === true && productData.file_path && productData.file_path.trim()) {
+                            const archiveResult = await window.electronAPI.fs.moveToArchive(productData.file_path);
+                            if (archiveResult.success) {
+                                console.log('メインファイルをアーカイブに移動:', archiveResult.newPath);
+                                
+                                // データベース内のファイルパスを更新
+                                const products = await window.electronAPI.database.getProducts();
+                                const addedProduct = products[products.length - 1]; // 最後に追加された商品
+                                if (addedProduct) {
+                                    let updatedData = { ...addedProduct, file_path: archiveResult.newPath };
+                                    
+                                    // 複数ファイルもアーカイブに移動
+                                    if (window.multipleFileData && window.multipleFileData.length > 0) {
+                                        const archivedFiles = [];
+                                        for (const fileData of window.multipleFileData) {
+                                            const result = await window.electronAPI.fs.moveToArchive(fileData.path);
+                                            if (result.success) {
+                                                archivedFiles.push({ ...fileData, path: result.newPath });
+                                                console.log('複数ファイルをアーカイブに移動:', result.newPath);
+                                            } else {
+                                                archivedFiles.push(fileData); // 移動失敗時は元のパスを保持
+                                                console.warn('複数ファイルのアーカイブ移動に失敗:', result.error);
+                                            }
+                                        }
+                                        
+                                        updatedData.file_paths = archivedFiles.map(f => f.path).join('|');
+                                        updatedData.display_names = archivedFiles.map(f => f.displayName).join('|');
+                                    }
+                                    
+                                    await window.electronAPI.database.updateProduct(addedProduct.id, updatedData);
+                                }
+                            } else {
+                                console.warn('メインファイルのアーカイブ移動に失敗:', archiveResult.error);
+                            }
+                        } else {
+                            console.log('自動アーカイブが無効のため、ファイルを移動しませんでした');
+                        }
                     }
                     await loadProducts();
                     closeModal();
@@ -2135,6 +2176,28 @@
                     if (window.electronAPI) {
                         await window.electronAPI.database.addProduct(productData);
                         console.log('商品を追加しました:', productData.name);
+                        
+                        // 設定確認後、ファイルをアーカイブに移動
+                        const settings = await window.electronAPI.settings.get();
+                        if (settings.autoArchive === true) {
+                            const archiveResult = await window.electronAPI.fs.moveToArchive(productData.file_path);
+                            if (archiveResult.success) {
+                                console.log('ファイルをアーカイブに移動:', archiveResult.newPath);
+                                // データベース内のファイルパスを更新
+                                const products = await window.electronAPI.database.getProducts();
+                                const addedProduct = products[products.length - 1]; // 最後に追加された商品
+                                if (addedProduct) {
+                                    await window.electronAPI.database.updateProduct(addedProduct.id, {
+                                        ...addedProduct,
+                                        file_path: archiveResult.newPath
+                                    });
+                                }
+                            } else {
+                                console.warn('ファイルのアーカイブ移動に失敗:', archiveResult.error);
+                            }
+                        } else {
+                            console.log('自動アーカイブが無効のため、ファイルを移動しませんでした');
+                        }
                     }
                 } catch (error) {
                     console.error('商品追加エラー:', error);
@@ -2146,7 +2209,13 @@
             
             const successCount = files.length;
             
-            alert(`${successCount}個の商品を追加しました！`);
+            // 設定を確認してメッセージを変更
+            const settings = await window.electronAPI.settings.get();
+            if (settings.autoArchive === true) {
+                alert(`${successCount}個の商品を追加しました！\nファイルはアーカイブフォルダに移動されました。`);
+            } else {
+                alert(`${successCount}個の商品を追加しました！`);
+            }
         }
         
         // 表示切り替え関数
@@ -3018,11 +3087,44 @@
             document.getElementById('helpModal').style.display = 'none';
         }
 
+        // 設定モーダル関数
+        async function showSettingsModal() {
+            document.getElementById('settingsModal').style.display = 'block';
+            
+            // 現在の設定を読み込んでチェックボックスに反映
+            try {
+                const settings = await window.electronAPI.settings.get();
+                document.getElementById('autoArchiveCheckbox').checked = settings.autoArchive === true; // デフォルトは無効
+            } catch (error) {
+                console.error('設定の読み込みに失敗:', error);
+                document.getElementById('autoArchiveCheckbox').checked = false; // デフォルト値
+            }
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        async function saveSettings() {
+            try {
+                const autoArchive = document.getElementById('autoArchiveCheckbox').checked;
+                await window.electronAPI.settings.update({ autoArchive });
+                console.log('設定を保存しました:', { autoArchive });
+                closeSettingsModal();
+            } catch (error) {
+                console.error('設定の保存に失敗:', error);
+                alert('設定の保存に失敗しました: ' + error.message);
+            }
+        }
+
         // モーダル外クリックで閉じる
         window.onclick = function(event) {
             const helpModal = document.getElementById('helpModal');
+            const settingsModal = document.getElementById('settingsModal');
             if (event.target === helpModal) {
                 closeHelpModal();
+            } else if (event.target === settingsModal) {
+                closeSettingsModal();
             }
         }
     </script>
@@ -3056,6 +3158,37 @@
                     <li><strong>一括タグ付け:</strong> 複数の商品を選択して一括でタグを適用</li>
                     <li><strong>タグフィルター:</strong> タグで商品を絞り込み表示</li>
                 </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- 設定モーダル -->
+    <div id="settingsModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5);">
+        <div style="background-color: #374151; margin: 10% auto; padding: 30px; border-radius: 6px; width: 90%; max-width: 500px; color: white; position: relative;">
+            <button onclick="closeSettingsModal()" style="position: absolute; top: 15px; right: 20px; background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 24px; font-weight: bold;">&times;</button>
+            
+            <h2 style="margin-top: 0; color: #60a5fa; font-size: 20px;">⚙️ 設定</h2>
+            
+            <div style="line-height: 1.6; font-size: 14px;">
+                <div style="margin-bottom: 20px;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="autoArchiveCheckbox" style="width: 16px; height: 16px;">
+                        <div>
+                            <div style="font-weight: 600; color: #d1d5db;">自動アーカイブ機能</div>
+                            <div style="font-size: 12px; color: #9ca3af; margin-top: 2px;">
+                                商品登録時にUnityPackageファイルを自動的にアーカイブフォルダに移動し、<br>
+                                ダウンロードフォルダなどから削除します
+                            </div>
+                        </div>
+                    </label>
+                </div>
+                
+                <div style="border-top: 1px solid #4b5563; padding-top: 15px; margin-top: 20px;">
+                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                        <button onclick="closeSettingsModal()" style="padding: 8px 16px; background-color: #6b7280; color: white; border: none; border-radius: 4px; cursor: pointer;">キャンセル</button>
+                        <button onclick="saveSettings()" style="padding: 8px 16px; background-color: #059669; color: white; border: none; border-radius: 4px; cursor: pointer;">保存</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

@@ -9,21 +9,40 @@ let mainWindow = null;
 const userDataPath = require('os').homedir();
 const dataDir = path.join(userDataPath, 'VRChat-Booth-Manager');
 const dataFile = path.join(dataDir, 'data.json');
+const archiveDir = path.join(dataDir, 'Archive');
 
 // データディレクトリを作成
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
+// アーカイブディレクトリを作成
+if (!fs.existsSync(archiveDir)) {
+  fs.mkdirSync(archiveDir, { recursive: true });
+}
+
 // データを読み込む
 let appData = {
   products: [],
-  avatars: []
+  avatars: [],
+  settings: {
+    autoArchive: false // デフォルトでアーカイブ機能を無効
+  }
 };
 
 if (fs.existsSync(dataFile)) {
   try {
-    appData = JSON.parse(fs.readFileSync(dataFile, 'utf8'));
+    const loadedData = JSON.parse(fs.readFileSync(dataFile, 'utf8'));
+    
+    // 既存データとデフォルト設定をマージ
+    appData = {
+      products: loadedData.products || [],
+      avatars: loadedData.avatars || [],
+      settings: {
+        autoArchive: false, // デフォルト値
+        ...loadedData.settings // 既存の設定で上書き
+      }
+    };
     
     // データ形式の互換性を確保
     if (appData.products) {
@@ -457,7 +476,67 @@ ipcMain.handle('fetch:thumbnail', async (_, boothUrl) => {
   }
 });
 
+// ファイルをアーカイブに移動
+ipcMain.handle('fs:moveToArchive', async (_, filePath) => {
+  try {
+    console.log('ファイルをアーカイブに移動:', filePath);
+    
+    if (!fs.existsSync(filePath)) {
+      console.log('移動対象ファイルが存在しません:', filePath);
+      return { success: false, error: 'ファイルが存在しません' };
+    }
+    
+    const fileName = path.basename(filePath);
+    const archivePath = path.join(archiveDir, fileName);
+    
+    // 同名ファイルが既に存在する場合はタイムスタンプを付与
+    let finalArchivePath = archivePath;
+    if (fs.existsSync(archivePath)) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const ext = path.extname(fileName);
+      const nameWithoutExt = path.basename(fileName, ext);
+      finalArchivePath = path.join(archiveDir, `${nameWithoutExt}_${timestamp}${ext}`);
+    }
+    
+    // ファイルを移動（コピー後に元ファイルを削除）
+    fs.copyFileSync(filePath, finalArchivePath);
+    fs.unlinkSync(filePath);
+    
+    console.log('ファイル移動完了:', finalArchivePath);
+    return { 
+      success: true, 
+      newPath: finalArchivePath,
+      message: `ファイルをアーカイブに移動しました: ${path.basename(finalArchivePath)}`
+    };
+    
+  } catch (error) {
+    console.error('ファイル移動エラー:', error);
+    return { 
+      success: false, 
+      error: `ファイル移動に失敗しました: ${error.message}` 
+    };
+  }
+});
+
+// アーカイブディレクトリのパスを取得
+ipcMain.handle('fs:getArchiveDir', async () => {
+  return archiveDir;
+});
+
+// 設定を取得
+ipcMain.handle('settings:get', async () => {
+  return appData.settings;
+});
+
+// 設定を更新
+ipcMain.handle('settings:update', async (_, newSettings) => {
+  appData.settings = { ...appData.settings, ...newSettings };
+  saveData();
+  return appData.settings;
+});
+
 console.log('=== VRChat Booth Manager - JSONファイル版 ===');
 console.log('データ保存先:', dataFile);
+console.log('アーカイブ保存先:', archiveDir);
 console.log('better-sqlite3を使わないシンプル版です');
 console.log('=======================================');
