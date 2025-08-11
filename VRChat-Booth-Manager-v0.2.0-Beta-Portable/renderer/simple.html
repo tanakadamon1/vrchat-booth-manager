@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VRChat Booth商品管理</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1f2937;
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background-color: #374151;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            background-color: #374151;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        .card-image {
+            width: 100%;
+            height: 150px;
+            background-color: #4b5563;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .card-content {
+            padding: 15px;
+            background-color: #374151;
+        }
+        .card-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        .card-author {
+            color: #9ca3af;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+        .buttons {
+            display: flex;
+            gap: 5px;
+        }
+        .btn {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            color: white;
+        }
+        .btn-blue { background-color: #2563eb; }
+        .btn-yellow { background-color: #d97706; }
+        .btn-red { background-color: #dc2626; }
+        .btn:hover { opacity: 0.8; }
+        .add-btn {
+            background-color: #16a34a;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>VRChat Booth商品管理</h1>
+            <button class="add-btn" onclick="addProduct()">商品を追加</button>
+        </div>
+        
+        <div id="products" class="grid">
+            <!-- 商品がここに表示されます -->
+        </div>
+    </div>
+
+    <script>
+        let products = [];
+
+        // Electronからデータを取得
+        async function loadProducts() {
+            try {
+                if (window.electronAPI) {
+                    products = await window.electronAPI.database.getProducts();
+                    renderProducts();
+                }
+            } catch (error) {
+                console.error('Failed to load products:', error);
+            }
+        }
+
+        // 商品一覧を表示
+        function renderProducts() {
+            const container = document.getElementById('products');
+            container.innerHTML = '';
+            
+            products.forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.onclick = () => openProductDetail(product);
+                
+                card.innerHTML = `
+                    <div class="card-image">
+                        ${product.thumbnail_url ? 
+                            `<img src="${product.thumbnail_url}" alt="${product.name}">` : 
+                            '<span style="color: #9ca3af;">画像なし</span>'
+                        }
+                    </div>
+                    <div class="card-content">
+                        <div class="card-title">${product.name}</div>
+                        ${product.author && product.author !== '' ? 
+                            `<div class="card-author">${product.author}</div>` : ''
+                        }
+                        <div class="buttons">
+                            ${product.file_path ? 
+                                `<button class="btn btn-blue" onclick="openFile(event, '${product.file_path}')">🎮</button>` : ''
+                            }
+                            <button class="btn btn-yellow" onclick="editProduct(event, ${product.id})">✏️</button>
+                            <button class="btn btn-red" onclick="deleteProduct(event, ${product.id})">🗑️</button>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        // ファイルを開く
+        async function openFile(event, filePath) {
+            event.stopPropagation();
+            if (window.electronAPI) {
+                try {
+                    await window.electronAPI.shell.openFile(filePath);
+                } catch (error) {
+                    alert('ファイルを開けませんでした: ' + error);
+                }
+            }
+        }
+
+        // 商品を編集
+        function editProduct(event, productId) {
+            event.stopPropagation();
+            alert('編集機能は準備中です');
+        }
+
+        // 商品を削除
+        async function deleteProduct(event, productId) {
+            event.stopPropagation();
+            if (confirm('この商品を削除しますか？')) {
+                try {
+                    if (window.electronAPI) {
+                        await window.electronAPI.database.deleteProduct(productId);
+                        await loadProducts();
+                    }
+                } catch (error) {
+                    alert('削除に失敗しました: ' + error);
+                }
+            }
+        }
+
+        // 商品を追加
+        function addProduct() {
+            alert('商品追加機能は準備中です');
+        }
+
+        // 商品詳細を開く
+        function openProductDetail(product) {
+            alert(`商品詳細: ${product.name}`);
+        }
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', loadProducts);
+    </script>
+</body>
+</html>

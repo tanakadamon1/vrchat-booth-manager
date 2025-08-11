@@ -1,0 +1,22 @@
+{
+  "name": "vrchat-booth-manager",
+  "version": "0.2.0",
+  "description": "VRChat改変向けBooth商品管理ツール",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [
+    "vrchat",
+    "booth",
+    "avatar",
+    "manager"
+  ],
+  "author": "VRChat Booth Manager Team",
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^9.2.2",
+    "electron-is-dev": "^2.0.0",
+    "puppeteer": "^24.15.0"
+  }
+}

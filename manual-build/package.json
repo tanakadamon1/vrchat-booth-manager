@@ -55,7 +55,16 @@
     ],
     "win": {
       "target": "dir",
-      "icon": "assets/icon.ico"
+      "icon": "assets/icon.ico",
+      "sign": false
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     },
     "compression": "store",
     "npmRebuild": false

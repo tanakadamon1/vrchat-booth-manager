@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modal Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background-color: #1a1a1a; 
+            color: white; 
+            padding: 20px; 
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        
+        .modal-content {
+            position: relative;
+            margin: 30px auto;
+            background-color: #374151;
+            padding: 25px;
+            border-radius: 8px;
+            width: 600px;
+            max-width: 95vw;
+            max-height: 95vh;
+            overflow-y: auto;
+        }
+        
+        .file-selection-list {
+            border: 1px solid #4b5563;
+            border-radius: 4px;
+            background-color: #1f2937;
+            margin: 15px 0;
+        }
+        
+        .file-item {
+            padding: 12px;
+            border-bottom: 1px solid #374151;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        
+        .file-item:hover {
+            background-color: #374151;
+        }
+        
+        .file-item strong {
+            display: block;
+            color: #e5e7eb;
+            margin-bottom: 4px;
+        }
+        
+        .file-path {
+            font-size: 12px;
+            color: #9ca3af;
+            word-break: break-all;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .form-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #6b7280;
+            color: white;
+        }
+        
+        .btn {
+            padding: 4px 6px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            margin: 2px;
+        }
+        
+        .btn-blue {
+            background-color: #2563eb;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Modal Dialog Test</h1>
+    <p>複数ファイルを持つ商品のテスト:</p>
+    
+    <button class="btn btn-blue" onclick="showFileSelection(null, 1754269100707)">Unity (複数ファイル)</button>
+    
+    <script>
+        // テスト用のサンプルデータ
+        const products = [
+            {
+                id: 1754269100707,
+                name: "OGRE Aloha SwimWear Ver004",
+                files: [
+                    {
+                        path: "C:\\Users\\kizan\\Downloads\\OGRE_SwimWear_UnityPackage_ver004\\OGRE_SwimWear_UnityPackage_ver004\\OGRE_Aloha_SwimWear_ver004.unitypackage",
+                        name: "OGRE_Aloha_SwimWear_ver004"
+                    },
+                    {
+                        path: "C:\\Users\\kizan\\Downloads\\OGRE_SwimWear_UnityPackage_ver004\\OGRE_SwimWear_UnityPackage_ver004\\OGRE_Bracelet_ver002.unitypackage",
+                        name: "OGRE_Bracelet_ver002"
+                    },
+                    {
+                        path: "C:\\Users\\kizan\\Downloads\\OGRE_SwimWear_UnityPackage_ver004\\OGRE_SwimWear_UnityPackage_ver004\\OGRE_Necklace_ver002.unitypackage",
+                        name: "OGRE_Necklace_ver002"
+                    }
+                ]
+            }
+        ];
+        
+        // 複数ファイル選択ダイアログを表示
+        window.showFileSelection = async function(event, productId) {
+            console.log('showFileSelection called with productId:', productId);
+            if (event) event.stopPropagation();
+            
+            const product = products.find(p => p.id === productId);
+            console.log('Found product:', product);
+            if (!product || !product.files || product.files.length === 0) {
+                alert('ファイルが見つかりません');
+                return;
+            }
+            console.log('Product files:', product.files);
+            
+            // ファイル選択ダイアログのHTMLを生成
+            const fileListHtml = product.files.map((file, index) => 
+                `<div class="file-item" onclick="selectFileToOpen('${file.path.replace(/\\/g, '\\\\')}', '${file.name}')">
+                    <strong>${file.name}</strong>
+                    <div class="file-path">${file.path}</div>
+                </div>`
+            ).join('');
+            
+            // モーダルダイアログを表示
+            console.log('Creating modal dialog');
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content" style="width: 600px;">
+                    <h3>開くファイルを選択</h3>
+                    <div class="file-selection-list" style="max-height: 400px; overflow-y: auto;">
+                        ${fileListHtml}
+                    </div>
+                    <div class="modal-buttons">
+                        <button onclick="closeModal()" class="form-btn">キャンセル</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            console.log('Modal added to DOM');
+            
+            // モーダル外クリックで閉じる
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+        
+        // ファイルが選択された時の処理
+        window.selectFileToOpen = async function(filePath, fileName) {
+            // モーダルを閉じる
+            const modal = document.querySelector('.modal-overlay');
+            if (modal) {
+                modal.remove();
+            }
+            
+            console.log('Selected file:', filePath);
+            alert('選択されたファイル: ' + fileName + '\nパス: ' + filePath);
+        }
+        
+        function closeModal() {
+            const modal = document.querySelector('.modal-overlay');
+            if (modal) {
+                modal.remove();
+            }
+        }
+    </script>
+</body>
+</html>

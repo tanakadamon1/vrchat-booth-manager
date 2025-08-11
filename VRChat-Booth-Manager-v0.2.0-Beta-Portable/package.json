@@ -1,0 +1,48 @@
+{
+  "name": "vrchat-booth-manager",
+  "version": "0.2.0",
+  "description": "VRChat改変向けBooth商品管理ツール",
+  "main": "main-localStorage.js",
+  "scripts": {
+    "start": "electron main-localStorage.js",
+    "start-original": "electron main.js",
+    "build": "electron-builder",
+    "build-win": "electron-builder --win",
+    "dist": "npm run build"
+  },
+  "keywords": [
+    "vrchat",
+    "booth",
+    "avatar",
+    "manager"
+  ],
+  "author": "VRChat Booth Manager Team",
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^22.0.0"
+  },
+  "devDependencies": {
+    "electron": "^28.3.3",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.vrchat.booth-manager",
+    "productName": "VRChat Booth Manager",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main-localStorage.js",
+      "preload.js",
+      "renderer/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

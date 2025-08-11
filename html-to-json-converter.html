@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Booth HTML to JSON Converter</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .upload-area { border: 2px dashed #ccc; padding: 40px; text-align: center; margin: 20px 0; }
+        .upload-area.dragover { border-color: #3b82f6; background-color: #f0f9ff; }
+        textarea { width: 100%; height: 300px; margin: 10px 0; }
+        button { padding: 10px 20px; margin: 5px; background-color: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #2563eb; }
+        .result { margin: 20px 0; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>🔄 Booth HTML → JSON コンバーター</h1>
+    
+    <div class="upload-area" id="uploadArea">
+        <p>📁 BoothライブラリのHTMLファイルをドラッグ&ドロップ</p>
+        <p>または</p>
+        <input type="file" id="fileInput" accept=".html,.htm" style="margin: 10px 0;">
+        <button onclick="document.getElementById('fileInput').click()">ファイルを選択</button>
+    </div>
+    
+    <div class="result">
+        <h3>変換結果:</h3>
+        <textarea id="resultJson" placeholder="変換されたJSONがここに表示されます..."></textarea>
+        <br>
+        <button id="downloadBtn" onclick="downloadJson()" disabled>📥 JSONファイルをダウンロード</button>
+        <button id="copyBtn" onclick="copyToClipboard()" disabled>📋 クリップボードにコピー</button>
+    </div>
+    
+    <div id="message"></div>
+
+    <script>
+        let convertedData = null;
+        
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const resultJson = document.getElementById('resultJson');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        const message = document.getElementById('message');
+
+        // Drag and Drop handlers
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                processFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                processFile(e.target.files[0]);
+            }
+        });
+
+        function processFile(file) {
+            if (!file.name.toLowerCase().endsWith('.html') && !file.name.toLowerCase().endsWith('.htm')) {
+                showMessage('❌ HTMLファイルを選択してください', 'error');
+                return;
+            }
+
+            showMessage('📖 ファイルを読み込み中...', 'info');
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const htmlContent = e.target.result;
+                    convertHtmlToJson(htmlContent);
+                } catch (error) {
+                    showMessage('❌ ファイルの読み込みに失敗しました: ' + error.message, 'error');
+                }
+            };
+            reader.readAsText(file, 'utf-8');
+        }
+
+        function convertHtmlToJson(htmlContent) {
+            try {
+                // Create a temporary DOM element to parse HTML
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlContent, 'text/html');
+                
+                const items = [];
+                const processedUrls = new Set();
+
+                // Look for library items with various selectors
+                const selectors = [
+                    '.l-library-item',
+                    'li[class*="library"]',
+                    'div[class*="library-item"]',
+                    'article[class*="library"]'
+                ];
+
+                let foundElements = [];
+                for (const selector of selectors) {
+                    const elements = doc.querySelectorAll(selector);
+                    if (elements.length > 0) {
+                        foundElements = elements;
+                        console.log(`Found ${elements.length} elements with selector: ${selector}`);
+                        break;
+                    }
+                }
+
+                // If no library items found, look for product links
+                if (foundElements.length === 0) {
+                    const productLinks = doc.querySelectorAll('a[href*="/items/"]');
+                    productLinks.forEach(link => {
+                        const container = link.closest('li, div, article, section');
+                        if (container && !foundElements.includes(container)) {
+                            foundElements.push(container);
+                        }
+                    });
+                }
+
+                foundElements.forEach((element, index) => {
+                    try {
+                        // Get product URL
+                        const linkEl = element.querySelector('a[href*="/items/"]');
+                        if (!linkEl) return;
+                        
+                        const boothUrl = linkEl.href;
+                        if (processedUrls.has(boothUrl)) return;
+                        processedUrls.add(boothUrl);
+
+                        // Get title
+                        const titleSelectors = [
+                            '.l-library-item-info__name',
+                            '.l-library-item__name',
+                            '[class*="item-name"]',
+                            '[class*="product-name"]',
+                            'h1', 'h2', 'h3', 'h4'
+                        ];
+                        let title = '';
+                        for (const sel of titleSelectors) {
+                            const titleEl = element.querySelector(sel);
+                            if (titleEl && titleEl.textContent.trim()) {
+                                title = titleEl.textContent.trim();
+                                break;
+                            }
+                        }
+                        if (!title) title = linkEl.textContent.trim();
+
+                        // Get thumbnail
+                        const imgEl = element.querySelector('img');
+                        const thumbnailUrl = imgEl ? (imgEl.src || imgEl.dataset.src || '') : '';
+
+                        // Get shop/author
+                        const shopSelectors = [
+                            '.l-library-item-info__shop',
+                            '.l-library-item__shop',
+                            '[class*="shop-name"]',
+                            '[class*="creator"]'
+                        ];
+                        let author = '';
+                        for (const sel of shopSelectors) {
+                            const shopEl = element.querySelector(sel);
+                            if (shopEl && shopEl.textContent.trim()) {
+                                author = shopEl.textContent.trim();
+                                break;
+                            }
+                        }
+
+                        // Look for download hints/file names
+                        const downloadElements = element.querySelectorAll('[class*="download"], [class*="file"], a[href*="download"]');
+                        const downloadHints = [];
+                        downloadElements.forEach(el => {
+                            const text = el.textContent.trim();
+                            if (text.match(/\.(zip|rar|unitypackage|pdf|psd)$/i)) {
+                                downloadHints.push(text);
+                            }
+                        });
+
+                        // Also look in the HTML text content for file patterns
+                        const htmlText = element.innerHTML;
+                        const fileMatches = htmlText.match(/[\w\-_.]+\.(zip|unitypackage|rar|pdf|psd)/gi);
+                        if (fileMatches) {
+                            fileMatches.forEach(match => {
+                                if (!downloadHints.includes(match)) {
+                                    downloadHints.push(match);
+                                }
+                            });
+                        }
+
+                        if (boothUrl && boothUrl.includes('/items/')) {
+                            const itemData = {
+                                title: title || `商品${index + 1}`,
+                                boothUrl,
+                                thumbnailUrl,
+                                author,
+                                downloadHints,
+                                extractedAt: new Date().toISOString()
+                            };
+                            items.push(itemData);
+                        }
+                    } catch (error) {
+                        console.warn(`Error processing element ${index}:`, error);
+                    }
+                });
+
+                // Create export result
+                convertedData = {
+                    exportedAt: new Date().toISOString(),
+                    totalItems: items.length,
+                    source: 'html-conversion',
+                    data: items
+                };
+
+                const jsonString = JSON.stringify(convertedData, null, 2);
+                resultJson.value = jsonString;
+                
+                downloadBtn.disabled = false;
+                copyBtn.disabled = false;
+                
+                showMessage(`✅ ${items.length}件の商品を変換しました`, 'success');
+                
+            } catch (error) {
+                showMessage('❌ HTML解析エラー: ' + error.message, 'error');
+                console.error('Conversion error:', error);
+            }
+        }
+
+        function downloadJson() {
+            if (!convertedData) return;
+            
+            const jsonString = JSON.stringify(convertedData, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const downloadUrl = URL.createObjectURL(blob);
+            
+            const downloadLink = document.createElement('a');
+            downloadLink.href = downloadUrl;
+            downloadLink.download = `booth_library_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            URL.revokeObjectURL(downloadUrl);
+            
+            showMessage('📥 JSONファイルをダウンロードしました', 'success');
+        }
+
+        function copyToClipboard() {
+            if (!convertedData) return;
+            
+            const jsonString = JSON.stringify(convertedData, null, 2);
+            navigator.clipboard.writeText(jsonString).then(() => {
+                showMessage('📋 クリップボードにコピーしました', 'success');
+            }).catch(err => {
+                showMessage('❌ コピーに失敗しました', 'error');
+            });
+        }
+
+        function showMessage(msg, type) {
+            message.innerHTML = `<div class="${type}" style="padding: 10px; margin: 10px 0;">${msg}</div>`;
+            setTimeout(() => {
+                message.innerHTML = '';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

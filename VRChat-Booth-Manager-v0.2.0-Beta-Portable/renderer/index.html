@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VRChat Booth商品管理</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1f2937;
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background-color: #374151;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            background-color: #374151;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        .card-image {
+            width: 100%;
+            height: 150px;
+            background-color: #4b5563;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .card-content {
+            padding: 15px;
+            background-color: #374151;
+        }
+        .card-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        .card-author {
+            color: #9ca3af;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+        .buttons {
+            display: flex;
+            gap: 5px;
+        }
+        .btn {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            color: white;
+            min-width: 50px;
+        }
+        .btn-blue { background-color: #2563eb; }
+        .btn-yellow { background-color: #d97706; }
+        .btn-red { background-color: #dc2626; }
+        .btn:hover { opacity: 0.8; }
+        .add-btn {
+            background-color: #16a34a;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        .modal-content {
+            position: relative;
+            margin: 50px auto;
+            background-color: #374151;
+            padding: 20px;
+            border-radius: 8px;
+            width: 400px;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #4b5563;
+            border-radius: 4px;
+            background-color: #4b5563;
+            color: white;
+            box-sizing: border-box;
+        }
+        .form-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        .form-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .form-btn-cancel {
+            background-color: #6b7280;
+            color: white;
+        }
+        .form-btn-submit {
+            background-color: #2563eb;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>VRChat Booth商品管理</h1>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="position: relative;">
+                    <input type="text" id="searchInput" placeholder="商品名・作者・説明文で検索..." onkeyup="searchProducts()" style="padding: 8px 12px; background-color: #4b5563; color: white; border: 1px solid #6b7280; border-radius: 6px; font-size: 14px; width: 250px;">
+                    <button onclick="clearSearch()" style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 16px;">×</button>
+                </div>
+                <button class="add-btn" onclick="addProduct()">商品を追加</button>
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 20px; display: flex; align-items: flex-start; gap: 25px; flex-wrap: wrap;">
+            <div>
+                <label style="color: white; font-weight: bold; display: block; margin-bottom: 10px;">表示カテゴリ:</label>
+                <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+                    <label style="display: flex; align-items: center; gap: 8px; color: white; cursor: pointer;">
+                        <input type="checkbox" id="filter_avatar" value="アバター本体" onchange="filterProducts()" checked style="width: 16px; height: 16px;">
+                        <span>アバター本体</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; color: white; cursor: pointer;">
+                        <input type="checkbox" id="filter_costume" value="衣装" onchange="filterProducts()" checked style="width: 16px; height: 16px;">
+                        <span>衣装</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; color: white; cursor: pointer;">
+                        <input type="checkbox" id="filter_accessory" value="アクセサリー" onchange="filterProducts()" checked style="width: 16px; height: 16px;">
+                        <span>アクセサリー</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; color: white; cursor: pointer;">
+                        <input type="checkbox" id="filter_hair" value="髪型" onchange="filterProducts()" checked style="width: 16px; height: 16px;">
+                        <span>髪型</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; color: white; cursor: pointer;">
+                        <input type="checkbox" id="filter_other" value="その他" onchange="filterProducts()" checked style="width: 16px; height: 16px;">
+                        <span>その他</span>
+                    </label>
+                </div>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <label for="avatarSelect" style="color: white; font-weight: bold;">アバター:</label>
+                    <select id="avatarSelect" onchange="filterProducts()" style="padding: 8px 12px; background-color: #374151; color: white; border: 1px solid #4b5563; border-radius: 6px; font-size: 14px; min-width: 150px;">
+                        <option value="all">すべて</option>
+                        <!-- アバターオプションがここに追加されます -->
+                    </select>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <label for="tagSelect" style="color: white; font-weight: bold;">タグ:</label>
+                    <select id="tagSelect" onchange="filterProducts()" style="padding: 8px 12px; background-color: #374151; color: white; border: 1px solid #4b5563; border-radius: 6px; font-size: 14px; min-width: 150px;">
+                        <option value="all">すべて</option>
+                        <!-- タグオプションがここに追加されます -->
+                    </select>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <label for="orderSelect" style="color: white; font-weight: bold;">並び順:</label>
+                    <select id="orderSelect" onchange="filterProducts()" style="padding: 8px 12px; background-color: #374151; color: white; border: 1px solid #4b5563; border-radius: 6px; font-size: 14px; min-width: 150px;">
+                        <option value="created_desc">新しい順</option>
+                        <option value="created_asc">古い順</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ドラッグ&ドロップエリア -->
+        <div id="dropZone" style="border: 2px dashed #4b5563; border-radius: 8px; padding: 40px; text-align: center; margin-bottom: 20px; background-color: #374151; display: none;">
+            <p style="color: #9ca3af; margin: 0; font-size: 16px;">📦 .unitypackageファイルをここにドロップして一括追加</p>
+        </div>
+        
+        <div id="products" class="grid">
+            <!-- 商品がここに表示されます -->
+        </div>
+    </div>
+
+    <!-- 商品追加・編集モーダル -->
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">商品を追加</h2>
+            <form id="productForm">
+                <div class="form-group">
+                    <label for="productName">商品名 *</label>
+                    <input type="text" id="productName" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="productCategory">カテゴリ</label>
+                    <select id="productCategory" name="category">
+                        <option value="アバター本体">アバター本体</option>
+                        <option value="衣装">衣装</option>
+                        <option value="アクセサリー">アクセサリー</option>
+                        <option value="髪型">髪型</option>
+                        <option value="その他">その他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="productBoothUrl">Booth URL</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="url" id="productBoothUrl" name="booth_url" placeholder="https://booth.pm/..." style="flex: 1;">
+                        <button type="button" onclick="fetchThumbnail()" class="form-btn form-btn-submit">サムネイル取得</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="productThumbnailUrl">サムネイル URL</label>
+                    <input type="url" id="productThumbnailUrl" name="thumbnail_url">
+                </div>
+                <div class="form-group">
+                    <label for="productFilePath">ファイルパス</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="productFilePath" name="file_path" style="flex: 1;">
+                        <button type="button" onclick="selectFile()" class="form-btn form-btn-submit">選択</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="productAvatars">対応アバター</label>
+                    <div id="avatarCheckboxes" style="max-height: 150px; overflow-y: auto; border: 1px solid #4b5563; border-radius: 4px; padding: 10px; background-color: #4b5563;">
+                        <!-- アバターのチェックボックスがここに表示されます -->
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="productTags">タグ</label>
+                    <div id="tagCheckboxes" style="max-height: 120px; overflow-y: auto; border: 1px solid #4b5563; border-radius: 4px; padding: 10px; background-color: #4b5563; margin-bottom: 10px;">
+                        <!-- タグのチェックボックスがここに表示されます -->
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="newTagInput" placeholder="新しいタグを追加" onkeypress="if(event.key==='Enter'){addNewTag();}" style="flex: 1; padding: 6px 8px; border: 1px solid #4b5563; border-radius: 4px; background-color: #4b5563; color: white; font-size: 12px;">
+                        <button type="button" onclick="addNewTag()" style="padding: 6px 12px; background-color: #16a34a; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">追加</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="productDescription">説明</label>
+                    <textarea id="productDescription" name="description" rows="3"></textarea>
+                </div>
+                <div class="form-buttons">
+                    <button type="button" onclick="closeModal()" class="form-btn form-btn-cancel">キャンセル</button>
+                    <button type="submit" class="form-btn form-btn-submit">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let products = [];
+        let avatars = [];
+        let currentSort = 'created_desc';
+        let searchQuery = '';
+
+        // Electronからデータを取得
+        async function loadProducts() {
+            try {
+                if (window.electronAPI) {
+                    products = await window.electronAPI.database.getProducts();
+                    avatars = await window.electronAPI.database.getAvatars();
+                    console.log('Loaded products:', products);
+                    console.log('Loaded avatars:', avatars);
+                    filterProducts();
+                }
+            } catch (error) {
+                console.error('Failed to load products:', error);
+            }
+        }
+
+        // 全アバターリストを取得
+        function getAllAvatars() {
+            // アバター本体カテゴリの商品も含めた全アバターを取得
+            const allAvatars = [...avatars];
+            
+            // アバター本体カテゴリの商品をアバターとして追加
+            const avatarProducts = products.filter(product => product.category === 'アバター本体');
+            avatarProducts.forEach(product => {
+                // 既に同じIDまたは同じ名前のアバターが存在しない場合のみ追加
+                if (!allAvatars.find(avatar => avatar.id === product.id || avatar.name === product.name)) {
+                    allAvatars.push({
+                        id: product.id,
+                        name: product.name,
+                        thumbnail_url: product.thumbnail_url
+                    });
+                }
+            });
+            
+            return allAvatars;
+        }
+
+        // アバター選択肢を更新
+        function updateAvatarSelects() {
+            const allAvatars = getAllAvatars();
+            
+            // 商品登録フォーム内のアバターチェックボックスを更新
+            const avatarCheckboxes = document.getElementById('avatarCheckboxes');
+            avatarCheckboxes.innerHTML = '';
+            
+            if (allAvatars.length === 0) {
+                avatarCheckboxes.innerHTML = '<p style="color: #9ca3af; margin: 0;">アバターが登録されていません</p>';
+            } else {
+                allAvatars.forEach(avatar => {
+                    const label = document.createElement('label');
+                    label.style.display = 'flex';
+                    label.style.alignItems = 'center';
+                    label.style.gap = '8px';
+                    label.style.color = 'white';
+                    label.style.cursor = 'pointer';
+                    label.style.marginBottom = '5px';
+                    
+                    label.innerHTML = `
+                        <input type="checkbox" value="${avatar.id}" style="width: 16px; height: 16px;">
+                        <span>${avatar.name}</span>
+                    `;
+                    
+                    avatarCheckboxes.appendChild(label);
+                });
+            }
+            
+            updateTagCheckboxes();
+            updateAvatarFilterSelect();
+        }
+        
+        // タグチェックボックスを更新
+        function updateTagCheckboxes() {
+            const allTags = getAllTags();
+            
+            // 商品登録フォーム内のタグチェックボックスを更新
+            const tagCheckboxes = document.getElementById('tagCheckboxes');
+            tagCheckboxes.innerHTML = '';
+            
+            if (allTags.length === 0) {
+                tagCheckboxes.innerHTML = '<p style="color: #9ca3af; margin: 0;">まだタグが登録されていません</p>';
+            } else {
+                allTags.forEach(tag => {
+                    const label = document.createElement('label');
+                    label.style.display = 'flex';
+                    label.style.alignItems = 'center';
+                    label.style.gap = '8px';
+                    label.style.color = 'white';
+                    label.style.cursor = 'pointer';
+                    label.style.marginBottom = '5px';
+                    
+                    label.innerHTML = `
+                        <input type="checkbox" value="${tag}" style="width: 16px; height: 16px;">
+                        <span>${tag}</span>
+                    `;
+                    
+                    tagCheckboxes.appendChild(label);
+                });
+            }
+        }
+        
+        // フィルタ用のアバター選択肢のみを更新
+        function updateAvatarFilterSelect() {
+            const allAvatars = getAllAvatars();
+            
+            // フィルタ用のアバター選択肢を更新
+            const avatarSelect = document.getElementById('avatarSelect');
+            const currentValue = avatarSelect.value; // 現在選択されている値を保持
+            avatarSelect.innerHTML = '<option value="all">すべて</option>';
+            
+            allAvatars.forEach(avatar => {
+                const option = document.createElement('option');
+                option.value = avatar.id;
+                option.textContent = avatar.name;
+                avatarSelect.appendChild(option);
+            });
+            
+            // 選択値を復元
+            if (currentValue) {
+                avatarSelect.value = currentValue;
+            }
+        }
+        
+        // 全商品からタグリストを取得
+        function getAllTags() {
+            const allTags = new Set();
+            
+            products.forEach(product => {
+                if (product.tags && product.tags.trim() !== '') {
+                    const productTags = product.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+                    productTags.forEach(tag => allTags.add(tag));
+                }
+            });
+            
+            return Array.from(allTags).sort();
+        }
+        
+        // タグフィルタ選択肢を更新
+        function updateTagFilterSelect() {
+            const allTags = getAllTags();
+            
+            // タグフィルタの選択肢を更新
+            const tagSelect = document.getElementById('tagSelect');
+            const currentValue = tagSelect.value; // 現在選択されている値を保持
+            tagSelect.innerHTML = '<option value="all">すべて</option>';
+            
+            allTags.forEach(tag => {
+                const option = document.createElement('option');
+                option.value = tag;
+                option.textContent = tag;
+                tagSelect.appendChild(option);
+            });
+            
+            // 選択値を復元
+            if (currentValue && allTags.includes(currentValue)) {
+                tagSelect.value = currentValue;
+            }
+        }
+
+        // フィルタ・ソート機能
+        function filterProducts() {
+            // チェックされているカテゴリを取得
+            const checkedCategories = [];
+            const checkboxes = ['filter_avatar', 'filter_costume', 'filter_accessory', 'filter_hair', 'filter_other'];
+            
+            checkboxes.forEach(id => {
+                const checkbox = document.getElementById(id);
+                if (checkbox && checkbox.checked) {
+                    checkedCategories.push(checkbox.value);
+                }
+            });
+            
+            // カテゴリフィルタリング
+            let filteredProducts = products.filter(product => {
+                return checkedCategories.includes(product.category);
+            });
+            
+            // 検索フィルタリング
+            if (searchQuery) {
+                filteredProducts = filteredProducts.filter(product => {
+                    const searchFields = [
+                        product.name || '',
+                        product.author || '',
+                        product.description || '',
+                        product.tags || ''
+                    ].join(' ').toLowerCase();
+                    
+                    return searchFields.includes(searchQuery);
+                });
+            }
+            
+            // アバターフィルタリング
+            const selectedAvatar = document.getElementById('avatarSelect')?.value;
+            if (selectedAvatar && selectedAvatar !== 'all') {
+                filteredProducts = filteredProducts.filter(product => {
+                    if (!product.avatar_ids || product.avatar_ids.trim() === '') return false;
+                    const avatarIds = product.avatar_ids.split(',').map(id => id.trim()).filter(id => id);
+                    return avatarIds.includes(selectedAvatar);
+                });
+            }
+            
+            // タグフィルタリング
+            const selectedTag = document.getElementById('tagSelect')?.value;
+            if (selectedTag && selectedTag !== 'all') {
+                filteredProducts = filteredProducts.filter(product => {
+                    if (!product.tags || product.tags.trim() === '') return false;
+                    const productTags = product.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+                    return productTags.includes(selectedTag);
+                });
+            }
+            
+            // 並び順適用
+            const orderType = document.getElementById('orderSelect')?.value || 'created_desc';
+            filteredProducts.sort((a, b) => {
+                switch (orderType) {
+                    case 'created_desc':
+                        return new Date(b.created_at) - new Date(a.created_at);
+                    case 'created_asc':
+                        return new Date(a.created_at) - new Date(b.created_at);
+                    default:
+                        return 0;
+                }
+            });
+            
+            renderProducts(filteredProducts);
+            
+            // フィルタ用の選択肢は常に更新
+            updateAvatarFilterSelect();
+            updateTagFilterSelect();
+            
+            // モーダルが開いていない場合のみフォーム内のアバターチェックボックスを更新
+            const productModal = document.getElementById('productModal');
+            if (!productModal || productModal.style.display !== 'block') {
+                updateAvatarSelects();
+            }
+        }
+
+        // 商品一覧を表示
+        function renderProducts(productsToRender = products) {
+            const container = document.getElementById('products');
+            container.innerHTML = '';
+            
+            productsToRender.forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.onclick = () => openProductDetail(product);
+                
+                card.innerHTML = `
+                    <div class="card-image">
+                        ${product.thumbnail_url ? 
+                            `<img src="${product.thumbnail_url}" alt="${product.name}">` : 
+                            '<span style="color: #9ca3af;">画像なし</span>'
+                        }
+                    </div>
+                    <div class="card-content">
+                        <div class="card-title">${product.name}</div>
+                        ${product.author && product.author !== '' && product.author !== '0' ? 
+                            `<div class="card-author">${product.author}</div>` : ''
+                        }
+                        <div class="buttons">
+                            ${product.file_path ? 
+                                `<button class="btn btn-blue" onclick="openFile(event, '${product.file_path.replace(/\\/g, '\\\\')}')">Unity</button>` : ''
+                            }
+                            <button class="btn btn-yellow" onclick="editProduct(event, ${product.id})">編集</button>
+                            <button class="btn btn-red" onclick="deleteProduct(event, ${product.id})">削除</button>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        // ファイルを開く
+        async function openFile(event, filePath) {
+            if (event) event.stopPropagation();
+            
+            if (!filePath || filePath.trim() === '') {
+                alert('ファイルパスが設定されていません');
+                return;
+            }
+            
+            if (window.electronAPI) {
+                try {
+                    await window.electronAPI.shell.openFile(filePath);
+                } catch (error) {
+                    console.error('ファイルオープンエラー:', error);
+                    
+                    // エラーメッセージをより分かりやすく表示
+                    if (error.message && error.message.includes('Unity')) {
+                        alert(error.message);
+                    } else {
+                        alert(`ファイルを開けませんでした:\n${error.message || error}\n\n対処法:\n1. Unity Hubがインストールされているか確認\n2. Unityプロジェクトを開いてから再度お試しください`);
+                    }
+                }
+            } else {
+                alert('Electron APIが利用できません');
+            }
+        }
+
+        let currentEditingProductId = null;
+        
+        // 新しいタグを追加
+        function addNewTag() {
+            const newTagInput = document.getElementById('newTagInput');
+            const newTag = newTagInput.value.trim();
+            
+            if (newTag === '') {
+                alert('タグ名を入力してください');
+                return;
+            }
+            
+            // 既存タグとの重複チェック
+            const allTags = getAllTags();
+            if (allTags.includes(newTag)) {
+                alert('既に存在するタグです');
+                return;
+            }
+            
+            // 新しいタグを手動でチェックボックスリストに追加
+            const tagCheckboxes = document.getElementById('tagCheckboxes');
+            
+            // 既存のメッセージを削除
+            if (tagCheckboxes.innerHTML.includes('まだタグが登録されていません')) {
+                tagCheckboxes.innerHTML = '';
+            }
+            
+            // 新しいタグのチェックボックスを作成
+            const label = document.createElement('label');
+            label.style.display = 'flex';
+            label.style.alignItems = 'center';
+            label.style.gap = '8px';
+            label.style.color = 'white';
+            label.style.cursor = 'pointer';
+            label.style.marginBottom = '5px';
+            
+            label.innerHTML = `
+                <input type="checkbox" value="${newTag}" checked style="width: 16px; height: 16px;">
+                <span>${newTag}</span>
+            `;
+            
+            tagCheckboxes.appendChild(label);
+            
+            // 入力欄をクリア
+            newTagInput.value = '';
+            
+            console.log('新しいタグを追加しました:', newTag);
+        }
+        
+        // 検索機能
+        function searchProducts() {
+            searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
+            filterProducts();
+        }
+        
+        // 検索をクリア
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            searchQuery = '';
+            filterProducts();
+        }
+
+        // 詳細画面から編集
+        function editProductFromDetail(event, productId) {
+            event.stopPropagation();
+            closeDetailModal(); // 詳細モーダルを閉じる
+            editProduct(event, productId);
+        }
+
+        // 商品を編集
+        function editProduct(event, productId) {
+            event.stopPropagation();
+            const product = products.find(p => p.id === productId);
+            if (product) {
+                currentEditingProductId = productId;
+                document.getElementById('modalTitle').textContent = '商品を編集';
+                document.getElementById('productName').value = product.name || '';
+                document.getElementById('productCategory').value = product.category || '';
+                document.getElementById('productBoothUrl').value = product.booth_url || '';
+                document.getElementById('productThumbnailUrl').value = product.thumbnail_url || '';
+                document.getElementById('productFilePath').value = product.file_path || '';
+                document.getElementById('productDescription').value = product.description || '';
+                
+                // 対応アバターのチェックボックスを設定
+                const productAvatarIds = product.avatar_ids ? product.avatar_ids.split(',').map(id => id.trim()).filter(id => id) : [];
+                const avatarCheckboxes = document.querySelectorAll('#avatarCheckboxes input[type="checkbox"]');
+                avatarCheckboxes.forEach(checkbox => {
+                    checkbox.checked = productAvatarIds.includes(checkbox.value);
+                });
+                
+                // タグのチェックボックスを設定
+                const productTags = product.tags ? product.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
+                const tagCheckboxes = document.querySelectorAll('#tagCheckboxes input[type="checkbox"]');
+                tagCheckboxes.forEach(checkbox => {
+                    checkbox.checked = productTags.includes(checkbox.value);
+                });
+                
+                document.getElementById('productModal').style.display = 'block';
+                
+                // モーダル表示後に最初の入力欄にフォーカス
+                setTimeout(() => {
+                    const nameInput = document.getElementById('productName');
+                    if (nameInput) {
+                        nameInput.focus();
+                        nameInput.select(); // 編集時は全選択
+                    }
+                }, 100);
+            }
+        }
+
+        // 商品を削除
+        async function deleteProduct(event, productId) {
+            event.stopPropagation();
+            if (confirm('この商品を削除しますか？')) {
+                try {
+                    if (window.electronAPI) {
+                        await window.electronAPI.database.deleteProduct(productId);
+                        await loadProducts();
+                        console.log('Product deleted:', productId);
+                    }
+                } catch (error) {
+                    console.error('Failed to delete product:', error);
+                    alert('削除に失敗しました: ' + error);
+                }
+            }
+        }
+
+        // 商品を追加
+        function addProduct() {
+            currentEditingProductId = null;
+            document.getElementById('modalTitle').textContent = '商品を追加';
+            document.getElementById('productForm').reset();
+            
+            // アバターチェックボックスをリセット
+            const avatarCheckboxes = document.querySelectorAll('#avatarCheckboxes input[type="checkbox"]');
+            avatarCheckboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
+            // タグチェックボックスをリセット
+            const tagCheckboxes = document.querySelectorAll('#tagCheckboxes input[type="checkbox"]');
+            tagCheckboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
+            document.getElementById('productModal').style.display = 'block';
+            
+            // モーダル表示後に最初の入力欄にフォーカス
+            setTimeout(() => {
+                const nameInput = document.getElementById('productName');
+                if (nameInput) {
+                    nameInput.focus();
+                }
+            }, 100);
+        }
+
+        // モーダルを閉じる
+        function closeModal() {
+            document.getElementById('productModal').style.display = 'none';
+            currentEditingProductId = null;
+        }
+
+        // ファイル選択
+        async function selectFile() {
+            if (window.electronAPI) {
+                try {
+                    const filePath = await window.electronAPI.dialog.selectFile();
+                    if (filePath) {
+                        document.getElementById('productFilePath').value = filePath;
+                    }
+                } catch (error) {
+                    console.error('Failed to select file:', error);
+                    alert('ファイル選択に失敗しました: ' + error);
+                }
+            }
+        }
+
+        // サムネイル取得
+        async function fetchThumbnail() {
+            const boothUrl = document.getElementById('productBoothUrl').value;
+            if (!boothUrl) {
+                alert('Booth URLを入力してください');
+                return;
+            }
+
+            if (!boothUrl.includes('booth.pm')) {
+                alert('有効なBooth URLを入力してください');
+                return;
+            }
+
+            const button = event.target;
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = '取得中...';
+
+            try {
+                if (window.electronAPI && window.electronAPI.fetch && window.electronAPI.fetch.thumbnail) {
+                    const thumbnailUrl = await window.electronAPI.fetch.thumbnail(boothUrl);
+                    if (thumbnailUrl) {
+                        document.getElementById('productThumbnailUrl').value = thumbnailUrl;
+                        alert('サムネイルを取得しました');
+                    } else {
+                        alert('サムネイルの取得に失敗しました');
+                    }
+                } else {
+                    alert('サムネイル取得機能が利用できません');
+                }
+            } catch (error) {
+                console.error('Failed to fetch thumbnail:', error);
+                alert('サムネイルの取得に失敗しました: ' + error.message);
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        }
+
+        // フォーム送信
+        document.getElementById('productForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            
+            // 選択されたアバターIDを取得
+            const selectedAvatarIds = [];
+            const avatarCheckboxes = document.querySelectorAll('#avatarCheckboxes input[type="checkbox"]:checked');
+            avatarCheckboxes.forEach(checkbox => {
+                selectedAvatarIds.push(checkbox.value);
+            });
+            
+            // 選択されたタグを取得
+            const selectedTags = [];
+            const tagCheckboxes = document.querySelectorAll('#tagCheckboxes input[type="checkbox"]:checked');
+            tagCheckboxes.forEach(checkbox => {
+                selectedTags.push(checkbox.value);
+            });
+            
+            const productData = {
+                name: formData.get('name'),
+                category: formData.get('category'),
+                booth_url: formData.get('booth_url'),
+                thumbnail_url: formData.get('thumbnail_url'),
+                file_path: formData.get('file_path'),
+                description: formData.get('description'),
+                author: '',
+                avatar_ids: selectedAvatarIds.join(','),
+                tags: selectedTags.join(',')
+            };
+
+            try {
+                if (window.electronAPI) {
+                    if (currentEditingProductId) {
+                        // 編集
+                        await window.electronAPI.database.updateProduct(currentEditingProductId, productData);
+                        console.log('Product updated:', currentEditingProductId);
+                    } else {
+                        // 新規追加
+                        await window.electronAPI.database.addProduct(productData);
+                        console.log('Product added:', productData);
+                    }
+                    await loadProducts();
+                    closeModal();
+                }
+            } catch (error) {
+                console.error('Failed to save product:', error);
+                alert('保存に失敗しました: ' + error);
+            }
+        });
+
+        // モーダル外クリックで閉じる
+        document.getElementById('productModal').addEventListener('click', function(event) {
+            if (event.target === this) {
+                closeModal();
+            }
+        });
+
+        // 商品詳細を開く
+        function openProductDetail(product) {
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.style.display = 'block';
+            
+            const modalContent = document.createElement('div');
+            modalContent.className = 'modal-content';
+            modalContent.style.width = '600px';
+            modalContent.style.maxWidth = '90vw';
+            
+            // 対応アバター名を取得
+            let avatarNames = '';
+            if (product.avatar_ids) {
+                const avatarIds = product.avatar_ids.split(',').map(id => id.trim()).filter(id => id);
+                const matchedAvatars = avatars.filter(avatar => avatarIds.includes(avatar.id.toString()));
+                avatarNames = matchedAvatars.map(avatar => avatar.name).join(', ');
+            }
+            
+            modalContent.innerHTML = `
+                <h2>${product.name}</h2>
+                <div style="display: flex; gap: 20px; margin: 20px 0;">
+                    <div style="flex-shrink: 0;">
+                        ${product.thumbnail_url ? 
+                            `<img src="${product.thumbnail_url}" alt="${product.name}" style="width: 150px; height: 150px; object-fit: cover; border-radius: 8px;">` : 
+                            '<div style="width: 150px; height: 150px; background-color: #4b5563; display: flex; align-items: center; justify-content: center; border-radius: 8px; color: #9ca3af;">画像なし</div>'
+                        }
+                    </div>
+                    <div style="flex: 1;">
+                        <p><strong>カテゴリ:</strong> ${product.category || 'なし'}</p>
+                        ${avatarNames ? `<p><strong>対応アバター:</strong> ${avatarNames}</p>` : ''}
+                        ${product.tags && product.tags.trim() !== '' ? `<p><strong>タグ:</strong> ${product.tags.split(',').map(tag => `<span style="background-color: #4b5563; padding: 2px 6px; border-radius: 4px; margin-right: 4px; font-size: 12px;">${tag.trim()}</span>`).join('')}</p>` : ''}
+                        ${product.author && product.author !== '' ? `<p><strong>作者:</strong> ${product.author}</p>` : ''}
+                        ${product.booth_url ? `<p><strong>Booth URL:</strong> <a href="${product.booth_url}" target="_blank" style="color: #60a5fa;">${product.booth_url}</a></p>` : ''}
+                        ${product.file_path ? `<p><strong>ファイルパス:</strong> ${product.file_path}</p>` : ''}
+                        ${product.description ? `<p><strong>説明:</strong><br>${product.description}</p>` : ''}
+                    </div>
+                </div>
+                <div class="form-buttons">
+                    ${product.file_path ? `<button onclick="openFile(event, '${product.file_path.replace(/\\/g, '\\\\')}')" class="form-btn form-btn-submit">Unityで開く</button>` : ''}
+                    <button onclick="editProductFromDetail(event, ${product.id})" class="form-btn form-btn-submit">編集</button>
+                    <button onclick="closeDetailModal()" class="form-btn form-btn-cancel">閉じる</button>
+                </div>
+            `;
+            
+            modal.appendChild(modalContent);
+            
+            // モーダル外クリックで閉じる
+            modal.addEventListener('click', function(event) {
+                if (event.target === modal) {
+                    closeDetailModal();
+                }
+            });
+            
+            document.body.appendChild(modal);
+            window.currentDetailModal = modal;
+        }
+        
+        // 詳細モーダルを閉じる
+        function closeDetailModal() {
+            if (window.currentDetailModal) {
+                document.body.removeChild(window.currentDetailModal);
+                window.currentDetailModal = null;
+            }
+        }
+
+
+        // ESCキーでモーダルを閉じる
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                // 商品追加・編集モーダル
+                const productModal = document.getElementById('productModal');
+                if (productModal && productModal.style.display === 'block') {
+                    closeModal();
+                }
+                
+                // 商品詳細モーダル
+                if (window.currentDetailModal) {
+                    closeDetailModal();
+                }
+            }
+        });
+
+        // ドラッグ&ドロップ機能
+        function initDragAndDrop() {
+            const dropZone = document.getElementById('dropZone');
+            const body = document.body;
+            
+            // ファイルがドラッグされた時にドロップゾーンを表示
+            body.addEventListener('dragenter', function(e) {
+                e.preventDefault();
+                if (hasUnityPackageFiles(e.dataTransfer)) {
+                    dropZone.style.display = 'block';
+                }
+            });
+            
+            body.addEventListener('dragover', function(e) {
+                e.preventDefault();
+            });
+            
+            body.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                // マウスが完全に画面外に出た場合のみ非表示
+                if (e.clientX === 0 && e.clientY === 0) {
+                    dropZone.style.display = 'none';
+                }
+            });
+            
+            body.addEventListener('drop', function(e) {
+                e.preventDefault();
+                dropZone.style.display = 'none';
+                
+                const files = Array.from(e.dataTransfer.files);
+                const unityPackageFiles = files.filter(file => 
+                    file.name.toLowerCase().endsWith('.unitypackage')
+                );
+                
+                if (unityPackageFiles.length > 0) {
+                    processDroppedFiles(unityPackageFiles);
+                }
+            });
+            
+            // ドロップゾーンのスタイル変更
+            dropZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.style.borderColor = '#16a34a';
+                this.style.backgroundColor = '#065f46';
+            });
+            
+            dropZone.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                this.style.borderColor = '#4b5563';
+                this.style.backgroundColor = '#374151';
+            });
+        }
+        
+        // .unitypackageファイルが含まれているかチェック
+        function hasUnityPackageFiles(dataTransfer) {
+            if (dataTransfer.items) {
+                for (let item of dataTransfer.items) {
+                    if (item.kind === 'file') {
+                        const file = item.getAsFile();
+                        if (file && file.name.toLowerCase().endsWith('.unitypackage')) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+        
+        // ファイル名からBooth商品を検索
+        async function searchBoothByFileName(fileName) {
+            try {
+                // ファイル名を検索キーワードに変換
+                let searchQuery = fileName
+                    .replace('.unitypackage', '')
+                    .replace(/[_-]/g, ' ')
+                    .replace(/[0-9]+/g, '') // バージョン番号を除去
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                
+                // よくある不要な文字列を除去
+                const removeWords = ['ver', 'version', 'v', 'type', 'installer', 'unity', 'package'];
+                removeWords.forEach(word => {
+                    const regex = new RegExp(`\\b${word}\\b`, 'gi');
+                    searchQuery = searchQuery.replace(regex, '');
+                });
+                
+                searchQuery = searchQuery.replace(/\s+/g, ' ').trim();
+                
+                if (searchQuery.length < 3) {
+                    return null; // 短すぎる場合は検索しない
+                }
+                
+                console.log(`Booth検索: "${searchQuery}"`);
+                
+                // Booth検索API（実際のAPIエンドポイントは存在しないため、模擬的な実装）
+                // 実際の実装では、Boothの検索APIまたはスクレイピングが必要
+                return await mockBoothSearch(searchQuery);
+                
+            } catch (error) {
+                console.error('Booth検索エラー:', error);
+                return null;
+            }
+        }
+        
+        // 模擬的なBooth検索（実際の実装ではAPIまたはスクレイピングを使用）
+        async function mockBoothSearch(query) {
+            // 実際の実装では、ここでBooth検索を行う
+            // 現在は既存のサムネイル取得機能を活用したダミー実装
+            
+            // 一般的な商品名パターンをチェック
+            const commonProducts = {
+                'ogre': { 
+                    url: 'https://booth.pm/ja/items/4911160',
+                    author: 'OGRE Works'
+                },
+                'faceemo': {
+                    url: 'https://booth.pm/ja/items/1234567', // ダミーURL
+                    author: 'FaceEmo'
+                },
+                'rotamash': {
+                    url: 'https://booth.pm/ja/items/7654321', // ダミーURL
+                    author: 'RotaMash'
+                }
+            };
+            
+            const lowerQuery = query.toLowerCase();
+            for (const [key, data] of Object.entries(commonProducts)) {
+                if (lowerQuery.includes(key)) {
+                    return data;
+                }
+            }
+            
+            return null;
+        }
+        
+        // ドロップされたファイルを処理
+        async function processDroppedFiles(files) {
+            console.log(`${files.length}個の.unitypackageファイルが追加されました`);
+            
+            // プログレス表示（オプション）
+            const progressMessage = `商品情報を取得中... (0/${files.length})`;
+            console.log(progressMessage);
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const fileName = file.name.replace('.unitypackage', '');
+                
+                // ファイル名から商品名を推測
+                const productName = fileName
+                    .replace(/[_-]/g, ' ')
+                    .replace(/\b\w/g, l => l.toUpperCase());
+                
+                // 自動でカテゴリを推測
+                let category = 'その他';
+                const lowerName = fileName.toLowerCase();
+                if (lowerName.includes('avatar') || lowerName.includes('アバター')) {
+                    category = 'アバター本体';
+                } else if (lowerName.includes('costume') || lowerName.includes('cloth') || lowerName.includes('衣装')) {
+                    category = '衣装';
+                } else if (lowerName.includes('accessory') || lowerName.includes('アクセサリー')) {
+                    category = 'アクセサリー';
+                } else if (lowerName.includes('hair') || lowerName.includes('髪')) {
+                    category = '髪型';
+                }
+                
+                // Booth商品情報を検索
+                let boothData = null;
+                try {
+                    boothData = await searchBoothByFileName(fileName);
+                    console.log(`商品情報を取得中... (${i + 1}/${files.length})`);
+                } catch (error) {
+                    console.error('Booth検索エラー:', error);
+                }
+                
+                // サムネイル取得
+                let thumbnailUrl = '';
+                if (boothData && boothData.url) {
+                    try {
+                        if (window.electronAPI && window.electronAPI.fetch && window.electronAPI.fetch.thumbnail) {
+                            thumbnailUrl = await window.electronAPI.fetch.thumbnail(boothData.url);
+                        }
+                    } catch (error) {
+                        console.error('サムネイル取得エラー:', error);
+                    }
+                }
+                
+                const productData = {
+                    name: productName,
+                    category: category,
+                    booth_url: boothData ? boothData.url : '',
+                    thumbnail_url: thumbnailUrl || '',
+                    file_path: file.path || file.name,
+                    description: boothData ? 
+                        `ドラッグ&ドロップで追加: ${file.name}${boothData.url ? '\n自動取得済み' : ''}` :
+                        `ドラッグ&ドロップで追加: ${file.name}`,
+                    author: boothData ? boothData.author : '',
+                    avatar_ids: '',
+                    tags: boothData ? 'ドロップ追加,自動取得' : 'ドロップ追加'
+                };
+                
+                try {
+                    if (window.electronAPI) {
+                        await window.electronAPI.database.addProduct(productData);
+                        console.log('商品を追加しました:', productData.name);
+                        if (boothData) {
+                            console.log('  - Booth URL:', productData.booth_url);
+                            console.log('  - 作者:', productData.author);
+                            console.log('  - サムネイル:', thumbnailUrl ? '取得済み' : '取得失敗');
+                        }
+                    }
+                } catch (error) {
+                    console.error('商品追加エラー:', error);
+                }
+            }
+            
+            // データを再読み込み
+            await loadProducts();
+            
+            const successCount = files.length;
+            const autoFetchCount = files.filter(async (file) => {
+                const boothData = await searchBoothByFileName(file.name);
+                return boothData !== null;
+            }).length;
+            
+            alert(`${successCount}個の商品を追加しました！\n${autoFetchCount > 0 ? `うち${autoFetchCount}個の商品で自動情報取得を試行しました。` : ''}`);
+        }
+        
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProducts();
+            initDragAndDrop();
+        });
+    </script>
+</body>
+</html>

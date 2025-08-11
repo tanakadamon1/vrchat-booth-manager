@@ -1,0 +1,11 @@
+{
+  "name": "vrchat-booth-manager",
+  "version": "0.2.0",
+  "description": "VRChat改変向けBooth商品管理ツール",
+  "main": "main-localStorage.js",
+  "author": "VRChat Booth Manager Team",
+  "license": "MIT",
+  "dependencies": {
+    "adm-zip": "^0.5.16"
+  }
+}
